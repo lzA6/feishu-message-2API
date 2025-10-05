@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+requests
+python-dotenv
+protobuf
+grpcio-tools
+playwright
+pyperclip

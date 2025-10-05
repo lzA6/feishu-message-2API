@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞书消息方舟</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="main-container">
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <h2 id="sidebar-title">会话列表</h2>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-id-input" placeholder="添加新 Chat ID 后按回车">
+                </div>
+            </header>
+            <ul class="chat-list" id="chat-list"></ul>
+        </aside>
+        <main class="chat-area">
+            <header class="chat-header">
+                <h1 id="current-chat-title">未选择会话</h1>
+                <div class="status-indicator" id="status-indicator" title="连接状态"></div>
+                <button id="settings-btn" class="icon-btn" title="设置"><i class="fas fa-cog"></i></button>
+            </header>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message system-message">请在设置中创建或选择一个预设，然后在左侧添加 Chat ID 开始监听。</div>
+            </div>
+        </main>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>设置与API指南</h2>
+                <span class="close-btn">&times;</span>
+            </header>
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab-link active" onclick="openTab(event, 'Profiles')">预设管理</button>
+                    <button class="tab-link" onclick="openTab(event, 'API')">API 调用</button>
+                    <button class="tab-link" onclick="openTab(event, 'Analysis')">对话分析</button>
+                    <button class="tab-link" onclick="openTab(event, 'Help')">获取指南</button>
+                </div>
+
+                <div id="Profiles" class="tab-content" style="display: block;">
+                    <h3>管理您的配置预设</h3>
+                    <div class="form-group">
+                        <label for="profile-select">当前预设</label>
+                        <div class="profile-controls">
+                            <select id="profile-select" class="form-control"></select>
+                            <button id="delete-profile-btn" class="icon-btn" title="删除当前预设"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="profile-name-input">预设名称</label>
+                        <input type="text" id="profile-name-input" placeholder="例如：公司技术群组" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="api-key-input">API 密钥 (Master Key)</label>
+                        <input type="password" id="api-key-input" placeholder="用于保护 API 的密钥" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-info-input">飞书认证信息 (JSON)</label>
+                        <div class="cookie-container">
+                            <textarea id="auth-info-input" rows="5" placeholder="点击右侧“一键获取”按钮，然后将脚本输出的 JSON 内容完整粘贴到此处。" class="form-control"></textarea>
+                            <button id="get-cookie-btn" class="save-btn secondary" title="通过自动化脚本获取新认证信息"><i class="fas fa-magic"></i> 一键获取</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="chat-ids-input">预设的 Chat ID 列表 (每行一个)</label>
+                        <textarea id="chat-ids-input" rows="3" placeholder="oc_xxxxxxxxxxxxxxxxx&#10;7557xxxxxxxxxxxxxxx" class="form-control"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button id="save-profile-btn" class="save-btn">保存当前预设</button>
+                        <button id="save-as-new-profile-btn" class="save-btn secondary">另存为新预设</button>
+                    </div>
+                    <hr>
+                    <h4>导入与导出</h4>
+                    <div class="button-group">
+                        <button id="import-profiles-btn" class="save-btn secondary">导入预设</button>
+                        <button id="export-profile-btn" class="save-btn secondary">导出当前预设</button>
+                        <button id="export-all-profiles-btn" class="save-btn secondary">导出所有预设</button>
+                        <input type="file" id="import-file-input" style="display: none;" accept=".json">
+                    </div>
+                </div>
+                
+                <div id="API" class="tab-content">
+                    <h3>API 地址生成器</h3>
+                    <p class="help-text">以下地址会根据您在“预设管理”中加载的配置和当前选择的会话动态生成。</p>
+                    <div class="form-group">
+                        <label>历史消息 API (Curl)</label>
+                        <textarea id="curl-history-output" rows="7" readonly class="form-control"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>实时消息 WebSocket 地址</label>
+                        <textarea id="ws-url-output" rows="6" readonly class="form-control"></textarea>
+                    </div>
+                </div>
+
+                <div id="Analysis" class="tab-content">
+                    <h3>导出对话用于 AI 分析</h3>
+                    <div class="form-group">
+                        <label for="export-count-input">要导出的最新消息数量 (1-500)</label>
+                        <input type="number" id="export-count-input" class="form-control" value="100" min="1" max="500">
+                    </div>
+                    <div class="form-group">
+                        <button id="export-btn" class="save-btn">手动导出</button>
+                    </div>
+                    <div class="form-group">
+                        <label>导出范围</label>
+                        <p id="export-context">尚未导出。</p>
+                    </div>
+                    <div class="form-group">
+                        <label>格式化对话内容 (手动导出结果)</label>
+                        <textarea id="export-output" rows="8" readonly class="form-control" placeholder="点击上方按钮后，格式化后的对话内容将显示在此处。"></textarea>
+                    </div>
+                    <hr>
+                    <h4>自动化调用</h4>
+                    <div class="form-group">
+                        <label>直接调用此 API (Curl)</label>
+                        <textarea id="curl-analysis-output" rows="7" readonly class="form-control"></textarea>
+                    </div>
+                </div>
+
+                <div id="Help" class="tab-content">
+                    <h3>如何获取所需信息？</h3>
+                    <h4>方法一：使用“一键获取”脚本 (推荐)</h4>
+                    <p>此方法能一次性获取所有必需的认证信息 (Cookie, Headers, Command IDs, Chat ID 等)。</p>
+                    <ol>
+                        <li>点击“预设管理”标签页中的“一键获取”按钮。</li>
+                        <li>按照弹窗中的指南，在您存放此项目的文件夹 (<code>feishu-local</code>) 中打开一个终端或命令行窗口。</li>
+                        <li><strong>运行脚本：</strong> 在终端中输入并执行以下命令：<pre><code>python get_cookie.py</code></pre></li>
+                        <li><strong>按提示操作：</strong> 脚本会自动打开一个浏览器窗口。请在该窗口中按顺序完成操作：
+                            <ol type="a">
+                                <li>完成飞书的扫码登录。</li>
+                                <li>**点击进入您想监听的群聊**。</li>
+                                <li>**点击右上角的【群设置】按钮**，以确保脚本能捕获到群聊ID。</li>
+                            </ol>
+                        </li>
+                        <li><strong>等待成功提示：</strong> 观察终端窗口，直到出现 `🎉🎉🎉 [完美成功]` 的提示。</li>
+                        <li><strong>关闭浏览器：</strong> 看到成功提示后，即可关闭浏览器。</li>
+                        <li><strong>自动复制与粘贴：</strong> 脚本会自动将包含所有信息的 JSON 文本复制到剪贴板。回到本页面，将复制的内容**完整地粘贴到 "飞书认证信息" 输入框**中，然后保存预设即可。</li>
+                    </ol>
+                    <p class="help-text"><b>提示：</b>首次运行前，请确保已在终端中执行过 <code>pip install -r requirements.txt</code> 和 <code>playwright install</code> 来安装所需依赖。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="cookie-helper-modal" class="modal">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>一键获取认证信息指南</h2>
+                <span class="close-cookie-helper">&times;</span>
+            </header>
+            <div class="modal-body">
+                <p>此功能通过一个安全的本地脚本自动打开浏览器，为您提取最新的认证信息。</p>
+                <h4>操作步骤：</h4>
+                <ol>
+                    <li><strong>打开终端：</strong> 在您存放此项目的文件夹 (<code>feishu-local</code>) 中打开一个终端或命令行窗口。</li>
+                    <li><strong>运行脚本：</strong> 在终端中输入并执行以下命令：<pre><code>python get_cookie.py</code></pre></li>
+                    <li><strong>按提示操作：</strong> 脚本会自动打开一个浏览器窗口。请在该窗口中按顺序完成操作：
+                        <ol type="a">
+                            <li>完成飞书的扫码登录。</li>
+                            <li>**点击进入您想监听的群聊**。</li>
+                            <li>**点击右上角的【群设置】按钮**，以确保脚本能捕获到群聊ID。</li>
+                        </ol>
+                    </li>
+                    <li><strong>等待成功提示：</strong> 观察终端窗口，直到出现 `🎉🎉🎉 [完美成功]` 的提示。</li>
+                    <li><strong>关闭浏览器：</strong> 看到成功提示后，即可关闭浏览器。</li>
+                    <li><strong>自动复制与粘贴：</strong> 脚本会自动将包含所有信息的 JSON 文本复制到剪贴板。回到本页面，将复制的内容**完整地粘贴到 "飞书认证信息" 输入框**中，然后保存预设即可。</li>
+                </ol>
+                <p class="help-text"><b>提示：</b>首次运行前，请确保已在终端中执行过 <code>pip install -r requirements.txt</code> 和 <code>playwright install</code> 来安装所需依赖。</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/script.js"></script>
+</body>
+</html>

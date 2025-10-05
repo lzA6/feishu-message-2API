@@ -1,0 +1,77 @@
+// feishu_im.proto (v9.0 - 终极真相版)
+syntax = "proto3";
+
+// --- 外部请求/响应定义 ---
+
+message GetMessagesRequest {
+    string chat_id = 1;
+    int32 count = 2;
+    string cursor = 3;
+    enum Scene {
+        UNKNOWN = 0;
+        SCENE_CHAT = 2;
+    }
+    Scene scene = 4;
+}
+
+message Sender {
+    string sender_id = 1;
+    string name = 2;
+    string avatar_url = 3;
+}
+
+message TextContent {
+    string text = 1;
+}
+
+message Message {
+    string message_id = 1;
+    string chat_id = 2;
+    Sender sender = 3;
+    int64 create_time = 4;
+    oneof content {
+        TextContent text_content = 5;
+    }
+}
+
+message GetMessagesResponse {
+    repeated Message items = 1;
+    bool has_more = 2;
+    string next_cursor = 3;
+}
+
+message StreamResponse {
+    repeated Message new_messages = 1;
+}
+
+
+// --- 内部网络帧协议定义 ---
+
+// BizRequest 是业务层的数据包，它的 payload 字段包含了具体操作的序列化数据
+// (例如 GetMessagesRequest 的序列化字节)
+message BizRequest {
+    // service 和 method 字段在我们的场景中不直接使用，
+    // 因为关键的 command_id 是通过 HTTP Header 传递的。
+    // 但为了协议的完整性，我们保留它们。
+    int32 service = 1;
+    int32 method = 2;
+    bytes payload = 15;
+}
+
+// BizResponse 是业务层的响应包，它的 payload 包含了具体操作的响应数据
+// (例如 GetMessagesResponse 的序列化字节)
+message BizResponse {
+    int32 code = 1;
+    string message = 2;
+    bytes payload = 15;
+}
+
+// Frame 是最外层的网络帧，它包裹了 BizRequest
+// 这个结构精确匹配了飞书Web端发送二进制数据时的格式
+message Frame {
+    int32 sequence_id = 1;
+    int32 log_id = 2;
+    int32 service_id = 3;
+    bytes payload = 5; // BizRequest 序列化后放在这里
+    string device_id = 6; // 对应 HTTP Header 中的 x-request-id
+}

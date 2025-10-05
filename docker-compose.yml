@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    container_name: feishu_app
+    env_file:
+      - .env
+
+  nginx:
+    image: nginx:latest
+    container_name: feishu_nginx
+    ports:
+      - "8008:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
